@@ -48,10 +48,17 @@ export default function Create() {
         setError(err.detail || "Submission failed");
         return;
       }
-      // NOTE: redirect gap — GET /creators/me does not exist.
-      // Cannot derive handle from ListingOut. Redirecting to dashboard.
-      // Atlas to log: add GET /creators/me to unblock /{handle}/{slug} redirect.
-      navigate("/dashboard");
+      const created = await r.json();
+      const meRes = await fetch("/api/creators/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!meRes.ok) {
+        // /creators/me failed — fall back to dashboard
+        navigate("/dashboard");
+        return;
+      }
+      const me = await meRes.json();
+      navigate(`/${me.handle}/${created.slug}`);
     } catch (e) {
       setError("Network error — please try again");
     } finally {

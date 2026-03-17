@@ -17,6 +17,18 @@ def list_creators(skip: int = 0, limit: int = 20, db: Session = Depends(get_db))
     )
     return [_to_out(c) for c in creators]
 
+@router.get("/me", response_model=CreatorOut)
+def get_my_creator(
+    db: Session = Depends(get_db),
+    account_id: str = Depends(require_sb_token),
+):
+    creator = db.query(CreatorProfile).filter(
+        CreatorProfile.soulbolt_account_id == account_id
+    ).first()
+    if not creator:
+        raise HTTPException(status_code=404, detail="Creator profile not found")
+    return _to_out(creator)
+
 @router.get("/{handle}", response_model=CreatorOut)
 def get_creator(handle: str, db: Session = Depends(get_db)):
     creator = db.query(CreatorProfile).filter(CreatorProfile.handle == handle).first()
