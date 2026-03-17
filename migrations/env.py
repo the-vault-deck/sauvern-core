@@ -8,6 +8,12 @@ from database import Base
 import models  # noqa
 
 config = context.config
+
+# Override sqlalchemy.url from DATABASE_URL env var if present
+db_url = os.environ.get("DATABASE_URL")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
+
 if config.config_file_name:
     fileConfig(config.config_file_name)
 
