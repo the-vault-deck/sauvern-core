@@ -1,0 +1,49 @@
+{
+  "registry_id": "SYSTEM_REGISTRY_V2_SAUVERN",
+  "domain": "sauvern",
+  "version": "V2",
+  "created": "2026-03-17",
+  "structural_authority": "CROOT",
+  "blocking_mode": "ABSOLUTE",
+  "override_allowed": false,
+  "hash_algorithm": "SHA256",
+  "canonicalization": "RFC8785",
+  "components": [
+    {
+      "registry_id": "DB_CREATOR_PROFILES_V1",
+      "classification": "CORE_SYSTEM",
+      "mutability": "IMMUTABLE",
+      "description": "creator_profiles table — stores creator identity, handle, bio, avatar, IE score cache"
+    },
+    {
+      "registry_id": "DB_LISTINGS_V1",
+      "classification": "CORE_SYSTEM",
+      "mutability": "IMMUTABLE",
+      "description": "listings table — stores listing content, slug, status (draft|published), creator FK"
+    },
+    {
+      "registry_id": "DB_LISTING_INDEX_V1",
+      "classification": "CORE_SYSTEM",
+      "mutability": "IMMUTABLE",
+      "description": "listing_index table — published listing feed index, append-only, sorted by published_at"
+    },
+    {
+      "registry_id": "SVC_INFLUENCE_V1",
+      "classification": "DOMAIN_ADAPTER",
+      "mutability": "MUTABLE",
+      "description": "IE fetch and cache layer — GET score from INFLUENCE_ENGINE_URL, cache in creator_profiles, TTL 3600s"
+    },
+    {
+      "registry_id": "SVC_SLUG_V1",
+      "classification": "DOMAIN_ADAPTER",
+      "mutability": "MUTABLE",
+      "description": "Slug generation and uniqueness enforcement — kebab-case from title, collision suffix -2/-3/etc, unique per creator"
+    },
+    {
+      "registry_id": "SVC_SBTOKEN_V1",
+      "classification": "ENFORCEMENT_MODULE",
+      "mutability": "MUTABLE",
+      "description": "sb_token validation via SOULBOLT API — POST to SOULBOLT_API_URL/auth/validate, returns soulbolt_account_id on 200"
+    }
+  ]
+}
