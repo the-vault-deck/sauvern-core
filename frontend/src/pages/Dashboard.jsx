@@ -6,7 +6,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const token = sessionStorage.getItem("sb_token");
-    fetch("/api/listings/mine", {
+    fetch("/api/listings/mine/drafts", {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())

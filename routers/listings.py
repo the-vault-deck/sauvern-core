@@ -19,7 +19,7 @@ def get_listings_for_creator(
 ):
     listings = (
         db.query(Listing)
-        .filter(Listing.creator_id == creator_id, Listing.status == "published")
+        .filter(Listing.creator_id == creator_id, Listing.status == "ACTIVE")
         .order_by(Listing.created_at.desc())
         .offset(skip).limit(limit).all()
     )
@@ -53,20 +53,34 @@ def create_listing(
         creator_id=creator.id,
         title=payload.title,
         slug=slug,
-        body=payload.body,
-        status="draft",
+        description=payload.description,
+        category=payload.category,
+        price_cents=payload.price_cents,
+        image_url=payload.image_url,
+        contact_method=payload.contact_method,
+        contact_value=payload.contact_value,
+        status="ACTIVE",
     )
     db.add(listing)
     db.commit()
     db.refresh(listing)
+
+    # Insert into listing_index
+    index_entry = ListingIndex(
+        listing_id=listing.id,
+        creator_id=creator.id,
+        published_at=listing.created_at,
+    )
+    db.add(index_entry)
+    db.commit()
 
     # Refresh IE score cache on listing creation
     fetch_and_cache(db, creator)
 
     return listing
 
-@router.patch("/{creator_id}/{slug}/publish", response_model=ListingOut)
-def publish_listing(
+@router.patch("/{creator_id}/{slug}/archive", response_model=ListingOut)
+def archive_listing(
     creator_id: str,
     slug: str,
     db: Session = Depends(get_db),
@@ -84,17 +98,31 @@ def publish_listing(
     ).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
-    if listing.status == "published":
-        raise HTTPException(status_code=409, detail="Already published")
+    if listing.status == "ARCHIVED":
+        raise HTTPException(status_code=409, detail="Already archived")
 
-    listing.status = "published"
-
-    index_entry = ListingIndex(
-        listing_id=listing.id,
-        creator_id=creator_id,
-        published_at=datetime.utcnow(),
-    )
-    db.add(index_entry)
+    listing.status = "ARCHIVED"
     db.commit()
     db.refresh(listing)
     return listing
+
+@router.get("/mine/drafts", response_model=list[ListingOut])
+def get_my_listings(
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    account_id: str = Depends(require_sb_token),
+):
+    creator = db.query(CreatorProfile).filter(
+        CreatorProfile.soulbolt_account_id == account_id
+    ).first()
+    if not creator:
+        raise HTTPException(status_code=404, detail="Creator profile not found")
+
+    listings = (
+        db.query(Listing)
+        .filter(Listing.creator_id == creator.id)
+        .order_by(Listing.created_at.desc())
+        .offset(skip).limit(limit).all()
+    )
+    return listings
