@@ -7,30 +7,41 @@ export default function CreatorProfile() {
   const { handle } = useParams();
   const [creator, setCreator] = useState(null);
   const [listings, setListings] = useState([]);
+  const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetch(`/api/creators/${handle}`)
-      .then((r) => r.json())
-      .then(setCreator)
-      .catch(console.error);
+      .then((r) => {
+        if (r.status === 404) { setNotFound(true); return null; }
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then((c) => {
+        if (!c) return;
+        setCreator(c);
+        return fetch(`/api/listings/${c.id}`)
+          .then((r) => {
+            if (!r.ok) throw new Error(r.status);
+            return r.json();
+          })
+          .then(setListings);
+      })
+      .catch((e) => setError(e.message));
   }, [handle]);
 
-  useEffect(() => {
-    if (!creator) return;
-    fetch(`/api/listings/${creator.id}`)
-      .then((r) => r.json())
-      .then(setListings)
-      .catch(console.error);
-  }, [creator]);
-
+  if (notFound) return <div className="error-state" role="alert">Creator not found</div>;
+  if (error) return <div className="error-state" role="alert">Unable to load profile</div>;
   if (!creator) return null;
 
   return (
     <div>
       <CreatorHeader creator={creator} />
-      {listings.map((l) => (
-        <ListingCard key={l.id} listing={l} creator={creator} />
-      ))}
+      <div className="listing-grid">
+        {listings.map((l) => (
+          <ListingCard key={l.id} listing={l} creator={creator} />
+        ))}
+      </div>
     </div>
   );
 }

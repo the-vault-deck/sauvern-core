@@ -10,6 +10,23 @@ from services.influence import fetch_and_cache
 
 router = APIRouter(prefix="/listings", tags=["listings"])
 
+@router.get("/mine", response_model=list[ListingOut])
+def get_my_listings(
+    db: Session = Depends(get_db),
+    account_id: str = Depends(require_sb_token),
+):
+    creator = db.query(CreatorProfile).filter(
+        CreatorProfile.soulbolt_account_id == account_id
+    ).first()
+    if not creator:
+        raise HTTPException(status_code=404, detail="Creator profile not found")
+    return (
+        db.query(Listing)
+        .filter(Listing.creator_id == creator.id)
+        .order_by(Listing.created_at.desc())
+        .all()
+    )
+
 @router.get("/{creator_id}", response_model=list[ListingOut])
 def get_listings_for_creator(
     creator_id: str,
@@ -106,23 +123,4 @@ def archive_listing(
     db.refresh(listing)
     return listing
 
-@router.get("/mine/drafts", response_model=list[ListingOut])
-def get_my_listings(
-    skip: int = 0,
-    limit: int = 20,
-    db: Session = Depends(get_db),
-    account_id: str = Depends(require_sb_token),
-):
-    creator = db.query(CreatorProfile).filter(
-        CreatorProfile.soulbolt_account_id == account_id
-    ).first()
-    if not creator:
-        raise HTTPException(status_code=404, detail="Creator profile not found")
 
-    listings = (
-        db.query(Listing)
-        .filter(Listing.creator_id == creator.id)
-        .order_by(Listing.created_at.desc())
-        .offset(skip).limit(limit).all()
-    )
-    return listings
