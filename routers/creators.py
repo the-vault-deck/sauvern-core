@@ -103,6 +103,7 @@ def _to_out(c: CreatorProfile) -> CreatorOut:
         display_name=c.display_name,
         bio=c.bio,
         avatar_url=c.avatar_url,
+        external_link=c.external_link,
         influence_score_display=c.influence_score_cache / 10000,
         created_at=c.created_at,
     )
