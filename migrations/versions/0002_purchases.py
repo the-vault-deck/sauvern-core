@@ -1,7 +1,7 @@
 """create purchases table
 
 Revision ID: 0002_purchases
-Revises: 22e1a4742c01
+Revises: 
 Create Date: 2026-03-17
 
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '0002_purchases'
-down_revision = '22e1a4742c01'
+down_revision = None
 branch_labels = None
 depends_on = None
 
