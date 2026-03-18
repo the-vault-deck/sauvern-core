@@ -1,64 +1,43 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-
-function ContactCTA({ method, value }) {
-  if (!method || !value) return null;
-  if (method === "EMAIL") {
-    return (
-      <a href={`mailto:${value}`} className="cta-button">
-        Contact Creator
-      </a>
-    );
-  }
-  if (method === "URL") {
-    return (
-      <a href={value} target="_blank" rel="noopener noreferrer" className="cta-button">
-        Get This
-      </a>
-    );
-  }
-  return null;
-}
+import { useParams, useNavigate } from "react-router-dom";
 
 export default function ListingDetail() {
   const { handle, slug } = useParams();
+  const navigate = useNavigate();
   const [listing, setListing] = useState(null);
   const [creator, setCreator] = useState(null);
-  const [notFound, setNotFound] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetch(`/api/creators/${handle}`)
-      .then((r) => {
-        if (r.status === 404) { setNotFound(true); return null; }
-        if (!r.ok) throw new Error(r.status);
-        return r.json();
-      })
+      .then((r) => r.json())
       .then((c) => {
-        if (!c) return;
         setCreator(c);
-        return fetch(`/api/listings/${c.id}/${slug}`)
-          .then((r) => {
-            if (r.status === 404) { setNotFound(true); return null; }
-            if (!r.ok) throw new Error(r.status);
-            return r.json();
-          })
-          .then((l) => { if (l) setListing(l); });
+        return fetch(`/api/listings/${c.id}/${slug}`);
       })
-      .catch((e) => setError(e.message));
+      .then((r) => r.json())
+      .then(setListing)
+      .catch(console.error);
   }, [handle, slug]);
 
-  if (notFound) return <div className="error-state" role="alert">Listing not found</div>;
-  if (error) return <div className="error-state" role="alert">Unable to load listing</div>;
+  const handleBuyNow = () => {
+    const token = localStorage.getItem("sb_token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    navigate("/checkout", { state: { listing_id: listing.id } });
+  };
+
   if (!listing) return null;
 
   return (
     <article>
       <h1>{listing.title}</h1>
       <p>{creator?.display_name} · {new Date(listing.created_at).toLocaleDateString()}</p>
-      <div>{listing.description}</div>
-      <ContactCTA method={listing.contact_method} value={listing.contact_value} />
-      <div data-hold="ie-integration" style={{ display: "none" }} />
+      <div>{listing.body}</div>
+      <button onClick={handleBuyNow} style={{ marginTop: "1rem" }}>
+        Buy Now
+      </button>
     </article>
   );
 }

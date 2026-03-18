@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from database import engine, Base
-from routers import creators, listings, index
+from routers import creators, listings, index, checkout
 
 Base.metadata.create_all(bind=engine)
 
@@ -14,6 +14,7 @@ app = FastAPI(
 app.include_router(creators.router)
 app.include_router(index.router)   # must be registered before listings — avoids /listings/index shadowing
 app.include_router(listings.router)
+app.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 
 @app.get("/health")
 def health():

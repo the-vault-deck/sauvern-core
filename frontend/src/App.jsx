@@ -4,7 +4,8 @@ import CreatorProfile from "./pages/CreatorProfile";
 import ListingDetail from "./pages/ListingDetail";
 import Create from "./pages/Create";
 import Dashboard from "./pages/Dashboard";
-import CreatorSetup from "./pages/CreatorSetup";
+import Checkout from "./pages/Checkout";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
 
 export default function App() {
   return (
@@ -13,7 +14,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/create" element={<Create />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/creators/setup" element={<CreatorSetup />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/checkout/success" element={<CheckoutSuccess />} />
         <Route path="/:handle/:slug" element={<ListingDetail />} />
         <Route path="/:handle" element={<CreatorProfile />} />
       </Routes>
