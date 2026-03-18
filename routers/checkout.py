@@ -1,7 +1,9 @@
 import os
+import uuid
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from database import get_db
 from models import Listing, Purchase
@@ -12,13 +14,6 @@ WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
 router = APIRouter()
 
-
-class CheckoutRequest:
-    def __init__(self, listing_id: str):
-        self.listing_id = listing_id
-
-
-from pydantic import BaseModel
 
 class CheckoutRequestBody(BaseModel):
     listing_id: str
@@ -72,7 +67,6 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         session = event["data"]["object"]
         metadata = session.get("metadata", {})
 
-        import uuid
         purchase = Purchase(
             id=str(uuid.uuid4()),
             listing_id=metadata.get("listing_id"),
