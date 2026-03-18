@@ -1,6 +1,25 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
+function ContactCTA({ method, value }) {
+  if (!method || !value) return null;
+  if (method === "EMAIL") {
+    return (
+      <a href={`mailto:${value}`} className="cta-button">
+        Contact Creator
+      </a>
+    );
+  }
+  if (method === "URL") {
+    return (
+      <a href={value} target="_blank" rel="noopener noreferrer" className="cta-button">
+        Get This
+      </a>
+    );
+  }
+  return null;
+}
+
 export default function ListingDetail() {
   const { handle, slug } = useParams();
   const [listing, setListing] = useState(null);
@@ -38,6 +57,7 @@ export default function ListingDetail() {
       <h1>{listing.title}</h1>
       <p>{creator?.display_name} · {new Date(listing.created_at).toLocaleDateString()}</p>
       <div>{listing.description}</div>
+      <ContactCTA method={listing.contact_method} value={listing.contact_value} />
       <div data-hold="ie-integration" style={{ display: "none" }} />
     </article>
   );

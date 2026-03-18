@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Create() {
@@ -6,6 +6,7 @@ export default function Create() {
   const token = sessionStorage.getItem("sb_token");
   if (!token) { navigate("/login"); return null; }
 
+  const [profileChecked, setProfileChecked] = useState(false);
   const [fields, setFields] = useState({
     title: "",
     description: "",
@@ -17,6 +18,22 @@ export default function Create() {
   });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/creators/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => {
+      if (r.status === 404) {
+        navigate("/creators/setup");
+        return;
+      }
+      if (!r.ok) {
+        setError("Unable to verify creator profile");
+        return;
+      }
+      setProfileChecked(true);
+    }).catch(() => setError("Network error checking profile"));
+  }, []);
 
   function handleChange(e) {
     setFields((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -53,7 +70,6 @@ export default function Create() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!meRes.ok) {
-        // /creators/me failed — fall back to dashboard
         navigate("/dashboard");
         return;
       }
@@ -65,6 +81,8 @@ export default function Create() {
       setSubmitting(false);
     }
   }
+
+  if (!profileChecked && !error) return null;
 
   return (
     <div>
