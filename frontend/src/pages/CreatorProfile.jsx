@@ -21,27 +21,36 @@ export default function CreatorProfile() {
         if (!c) return;
         setCreator(c);
         return fetch(`/api/listings/${c.id}`)
-          .then((r) => {
-            if (!r.ok) throw new Error(r.status);
-            return r.json();
-          })
+          .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
           .then(setListings);
       })
       .catch((e) => setError(e.message));
   }, [handle]);
 
-  if (notFound) return <div className="error-state" role="alert">Creator not found</div>;
-  if (error) return <div className="error-state" role="alert">Unable to load profile</div>;
+  if (notFound) return (
+    <div className="page-shell">
+      <div className="empty-state fade-up"><p>Creator not found.</p></div>
+    </div>
+  );
+  if (error) return (
+    <div className="page-shell">
+      <div className="error-state fade-up" role="alert">Unable to load profile</div>
+    </div>
+  );
   if (!creator) return null;
 
   return (
-    <div>
+    <div className="page-shell fade-up">
       <CreatorHeader creator={creator} />
-      <div className="listing-grid">
-        {listings.map((l) => (
-          <ListingCard key={l.id} listing={l} creator={creator} />
-        ))}
-      </div>
+      {listings.length === 0 ? (
+        <div className="empty-state"><p>No listings yet.</p></div>
+      ) : (
+        <div className="listing-grid">
+          {listings.map((l) => (
+            <ListingCard key={l.id} listing={l} creator={creator} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

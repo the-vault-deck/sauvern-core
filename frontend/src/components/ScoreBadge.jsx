@@ -1,3 +1,7 @@
-export default function ScoreBadge({ rawScore }) {
-  return <span>{(rawScore / 10000).toFixed(2)}</span>;
+export default function ScoreBadge({ score }) {
+  return (
+    <span className="score-badge">
+      {Number(score).toFixed(2)}
+    </span>
+  );
 }

@@ -34,10 +34,10 @@ def create_checkout_session(
         line_items=[{
             "price_data": {
                 "currency": "usd",
-                "unit_amount": 999,  # $9.99 flat — per-listing pricing deferred
+                "unit_amount": listing.price_cents if listing.price_cents else 999,
                 "product_data": {
                     "name": listing.title,
-                    "description": (listing.body[:80] + "...") if listing.body else "",
+                    "description": (listing.description[:80] + "...") if listing.description else "",
                 },
             },
             "quantity": 1,

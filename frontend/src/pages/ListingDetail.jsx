@@ -1,43 +1,74 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 
 export default function ListingDetail() {
   const { handle, slug } = useParams();
   const navigate = useNavigate();
   const [listing, setListing] = useState(null);
   const [creator, setCreator] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetch(`/api/creators/${handle}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then((c) => {
         setCreator(c);
         return fetch(`/api/listings/${c.id}/${slug}`);
       })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(setListing)
-      .catch(console.error);
+      .catch((e) => setError(e.message));
   }, [handle, slug]);
 
-  const handleBuyNow = () => {
+  function handleBuyNow() {
     const token = localStorage.getItem("sb_token");
-    if (!token) {
-      navigate("/login");
-      return;
-    }
+    if (!token) { navigate("/login"); return; }
     navigate("/checkout", { state: { listing_id: listing.id } });
-  };
+  }
 
+  if (error) return (
+    <div className="page-shell">
+      <div className="error-state fade-up" role="alert">Unable to load listing</div>
+    </div>
+  );
   if (!listing) return null;
 
+  const price = listing.price_cents
+    ? `$${(listing.price_cents / 100).toFixed(2)}`
+    : "Free";
+
   return (
-    <article>
-      <h1>{listing.title}</h1>
-      <p>{creator?.display_name} · {new Date(listing.created_at).toLocaleDateString()}</p>
-      <div>{listing.body}</div>
-      <button onClick={handleBuyNow} style={{ marginTop: "1rem" }}>
-        Buy Now
-      </button>
-    </article>
+    <div className="page-shell">
+      <div className="listing-detail fade-up">
+        {listing.category && (
+          <span className="listing-card-category">{listing.category}</span>
+        )}
+        <h1 style={{ marginTop: "0.5rem" }}>{listing.title}</h1>
+        <div className="listing-detail-meta">
+          {creator && (
+            <Link to={`/${creator.handle}`}>{creator.display_name}</Link>
+          )}
+          <span>·</span>
+          <time>{new Date(listing.created_at).toLocaleDateString()}</time>
+        </div>
+        <div className="listing-detail-body">{listing.description}</div>
+        <div className="listing-detail-cta">
+          <span className="listing-price-display">{price}</span>
+          {listing.price_cents ? (
+            <button className="btn btn-primary" onClick={handleBuyNow}>
+              Buy Now
+            </button>
+          ) : listing.contact_method === "EMAIL" ? (
+            <a className="btn btn-primary" href={`mailto:${listing.contact_value}`}>
+              Contact Creator
+            </a>
+          ) : (
+            <a className="btn btn-primary" href={listing.contact_value} target="_blank" rel="noreferrer">
+              Visit Link
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
