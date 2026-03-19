@@ -30,13 +30,13 @@ class Listing(Base):
     creator_id: Mapped[str] = mapped_column(String, ForeignKey("creator_profiles.id"), nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     slug: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str | None] = mapped_column(String, nullable=True)
     price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
-    contact_method: Mapped[str] = mapped_column(String, nullable=False, default="EMAIL")
-    contact_value: Mapped[str] = mapped_column(String, nullable=False, default="")
-    status: Mapped[str] = mapped_column(String, default="ACTIVE", nullable=False)
+    contact_method: Mapped[str] = mapped_column(String, default="EMAIL", nullable=False)
+    contact_value: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", nullable=False)  # ACTIVE | ARCHIVED
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     creator: Mapped["CreatorProfile"] = relationship("CreatorProfile", back_populates="listings")
