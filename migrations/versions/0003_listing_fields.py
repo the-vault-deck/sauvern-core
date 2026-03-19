@@ -24,9 +24,6 @@ def upgrade():
     op.execute("ALTER TABLE listings ADD COLUMN IF NOT EXISTS contact_method VARCHAR DEFAULT 'EMAIL'")
     op.execute("ALTER TABLE listings ADD COLUMN IF NOT EXISTS contact_value VARCHAR")
 
-    # Migrate body -> description for any rows that predate this column
-    op.execute("UPDATE listings SET description = body WHERE description IS NULL AND body IS NOT NULL")
-
     # Creator profiles
     op.execute("ALTER TABLE creator_profiles ADD COLUMN IF NOT EXISTS external_link VARCHAR")
 
