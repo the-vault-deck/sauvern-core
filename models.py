@@ -16,6 +16,7 @@ class CreatorProfile(Base):
     display_name: Mapped[str] = mapped_column(String, nullable=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    external_link: Mapped[str | None] = mapped_column(String, nullable=True)
     influence_score_cache: Mapped[int] = mapped_column(Integer, default=0)
     score_cached_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
@@ -29,16 +30,19 @@ class Listing(Base):
     creator_id: Mapped[str] = mapped_column(String, ForeignKey("creator_profiles.id"), nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     slug: Mapped[str] = mapped_column(String, nullable=False)
-    body: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(String, default="draft", nullable=False)  # draft | published
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str | None] = mapped_column(String, nullable=True)
+    price_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    contact_method: Mapped[str] = mapped_column(String, nullable=False, default="EMAIL")
+    contact_value: Mapped[str] = mapped_column(String, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String, default="ACTIVE", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     creator: Mapped["CreatorProfile"] = relationship("CreatorProfile", back_populates="listings")
     index_entry: Mapped["ListingIndex | None"] = relationship("ListingIndex", back_populates="listing", uselist=False)
 
     __table_args__ = (UniqueConstraint("creator_id", "slug", name="uq_creator_slug"),)
-
-    # TODO: listing_events table for audit trail (post-v0.1)
 
 class ListingIndex(Base):
     __tablename__ = "listing_index"
