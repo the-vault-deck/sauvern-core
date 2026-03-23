@@ -9,6 +9,7 @@ import Checkout from "./pages/Checkout";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CreatorSetup from "./pages/CreatorSetup";
 import Login from "./pages/Login";
+import Admin from "./pages/Admin";
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/create" element={<Create />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="/creators/setup" element={<CreatorSetup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/checkout" element={<Checkout />} />

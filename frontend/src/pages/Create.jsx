@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function Create() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("sb_token");
+  const token = sessionStorage.getItem("sb_token") || localStorage.getItem("sb_token");
   if (!token) { navigate("/login"); return null; }
 
   const [profileChecked, setProfileChecked] = useState(false);
@@ -14,6 +14,7 @@ export default function Create() {
   });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     fetch("/api/creators/me", { headers: { Authorization: `Bearer ${token}` } })
@@ -31,6 +32,8 @@ export default function Create() {
 
   async function handleSubmit() {
     if (!fields.title.trim()) { setError("Title required"); return; }
+    if (!fields.description.trim()) { setError("Description required"); return; }
+    if (!fields.category.trim()) { setError("Category required"); return; }
     if (!fields.contact_value.trim()) { setError("Contact info required"); return; }
     setError(null);
     setSubmitting(true);
@@ -44,28 +47,47 @@ export default function Create() {
         price_cents: fields.price_cents ? parseInt(fields.price_cents, 10) : null,
         image_url: fields.image_url || null,
       };
-      const r = await fetch("/api/listings", {
+      const r = await fetch("/api/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
       if (!r.ok) { const err = await r.json(); setError(err.detail || "Submission failed"); return; }
-      const created = await r.json();
-      const meRes = await fetch("/api/creators/me", { headers: { Authorization: `Bearer ${token}` } });
-      if (!meRes.ok) { navigate("/dashboard"); return; }
-      const me = await meRes.json();
-      navigate(`/${me.handle}/${created.slug}`);
+      setSubmitted(true);
     } catch { setError("Network error — please try again"); }
     finally { setSubmitting(false); }
   }
 
   if (!profileChecked && !error) return null;
 
+  if (submitted) {
+    return (
+      <div className="page-shell">
+        <div style={{ maxWidth: 600 }} className="fade-up">
+          <div className="page-header">
+            <h1>Submitted</h1>
+          </div>
+          <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
+            Your listing has been submitted for review. The SAUVERN team will
+            approve or reject it. You can track the status in your dashboard.
+          </p>
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <button className="btn btn-primary" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
+            <button className="btn" onClick={() => { setSubmitted(false); setFields({ title: "", description: "", category: "", price_cents: "", image_url: "", contact_method: "EMAIL", contact_value: "" }); }}>Submit Another</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page-shell">
       <div style={{ maxWidth: 600 }} className="fade-up">
         <div className="page-header">
-          <h1>New Listing</h1>
+          <h1>Submit a Listing</h1>
+          <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem", fontSize: "0.9rem" }}>
+            All listings are reviewed before going live on SAUVERN.
+          </p>
         </div>
         {error && <div className="error-state" role="alert" style={{ marginBottom: "1rem" }}>{error}</div>}
         <div className="form-stack">
@@ -74,16 +96,16 @@ export default function Create() {
             <input name="title" value={fields.title} onChange={handleChange} placeholder="What are you offering?" />
           </div>
           <div className="form-group">
-            <label className="form-label">Category</label>
-            <input name="category" value={fields.category} onChange={handleChange} placeholder="e.g. Consulting, Template, Course" />
+            <label className="form-label">Category *</label>
+            <input name="category" value={fields.category} onChange={handleChange} placeholder="e.g. AI Tool, Consulting, Course" />
           </div>
           <div className="form-group">
-            <label className="form-label">Description</label>
+            <label className="form-label">Description *</label>
             <textarea name="description" value={fields.description} onChange={handleChange} placeholder="Describe your listing…" />
           </div>
           <div className="form-group">
-            <label className="form-label">Price (cents) — leave blank for free</label>
-            <input name="price_cents" value={fields.price_cents} onChange={handleChange} placeholder="e.g. 4900 = $49.00" type="number" min="0" />
+            <label className="form-label">Pricing model</label>
+            <input name="price_cents" value={fields.price_cents} onChange={handleChange} placeholder="e.g. 4900 = $49.00 — leave blank for free" type="number" min="0" />
           </div>
           <div className="form-group">
             <label className="form-label">Image URL (optional)</label>
@@ -104,7 +126,7 @@ export default function Create() {
             </div>
           </div>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting} style={{ alignSelf: "flex-start" }}>
-            {submitting ? "Publishing…" : "Publish Listing"}
+            {submitting ? "Submitting…" : "Submit for Review"}
           </button>
         </div>
       </div>

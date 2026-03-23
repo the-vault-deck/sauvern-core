@@ -36,7 +36,12 @@ class Listing(Base):
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     contact_method: Mapped[str] = mapped_column(String, default="EMAIL", nullable=False)
     contact_value: Mapped[str | None] = mapped_column(String, nullable=True)
-    status: Mapped[str] = mapped_column(String, default="ACTIVE", nullable=False)  # ACTIVE | ARCHIVED
+    # status: PENDING | APPROVED | REJECTED | ARCHIVED
+    status: Mapped[str] = mapped_column(String, default="PENDING", nullable=False)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     creator: Mapped["CreatorProfile"] = relationship("CreatorProfile", back_populates="listings")
