@@ -1,35 +1,28 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const SOULBOLT_URL = import.meta.env.VITE_SOULBOLT_URL || "https://soulbolt.ai";
 
-// Migrate any token left in localStorage into sessionStorage, then clear localStorage.
-function resolveToken() {
-  let token = sessionStorage.getItem("sb_token");
-  if (!token) {
-    const legacy = localStorage.getItem("sb_token");
-    if (legacy) {
-      sessionStorage.setItem("sb_token", legacy);
-      localStorage.removeItem("sb_token");
-      token = legacy;
-    }
-  }
-  return token;
-}
-
 export default function Nav() {
-  const navigate = useNavigate();
-  const [token, setToken] = useState(() => resolveToken());
+  // Auth state: probe /api/creators/me — cookie is sent automatically.
+  // null = loading, true = authenticated, false = not authenticated.
+  const [authed, setAuthed] = useState(null);
 
   useEffect(() => {
-    setToken(resolveToken());
+    fetch("/api/creators/me", { credentials: "include" })
+      .then((r) => setAuthed(r.ok))
+      .catch(() => setAuthed(false));
   }, []);
 
-  function handleSignOut() {
-    sessionStorage.removeItem("sb_token");
-    localStorage.removeItem("sb_token");
-    setToken(null);
-    // Return to SOULBOLT on sign out — SSO is the only auth path
+  async function handleSignOut() {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (_) {
+      // ignore — cookie cleared server-side regardless
+    }
     window.location.href = SOULBOLT_URL;
   }
 
@@ -40,7 +33,7 @@ export default function Nav() {
           SAUVERN<span>.</span>
         </Link>
         <ul className="nav-links">
-          {token ? (
+          {authed ? (
             <>
               <li><Link to="/dashboard">Dashboard</Link></li>
               <li>

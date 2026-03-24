@@ -1,36 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-// Migrate any token left in localStorage into sessionStorage, then clear localStorage.
-// One-time migration path for existing sessions. After this runs, localStorage is clean.
-function resolveToken() {
-  let token = sessionStorage.getItem("sb_token");
-  if (!token) {
-    const legacy = localStorage.getItem("sb_token");
-    if (legacy) {
-      sessionStorage.setItem("sb_token", legacy);
-      localStorage.removeItem("sb_token");
-      token = legacy;
-    }
-  }
-  return token;
-}
-
 export default function Dashboard() {
   const navigate = useNavigate();
-  const token = resolveToken();
-  if (!token) { navigate("/login"); return null; }
-
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetch("/api/listings/mine", {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
-      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(setListings)
+      .then((r) => {
+        if (r.status === 401) { navigate("/login"); return null; }
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then((data) => { if (data) setListings(data); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);

@@ -1,20 +1,30 @@
 import os
 import httpx
-from fastapi import HTTPException, Header
-from typing import Annotated
+from fastapi import HTTPException, Header, Cookie, Request
+from typing import Annotated, Optional
 
 SOULBOLT_API_URL = os.environ.get("SOULBOLT_API_URL", "")
 
-def require_sb_token(authorization: Annotated[str | None, Header()] = None) -> str:
+
+def require_sb_token(
+    authorization: Annotated[Optional[str], Header()] = None,
+    sb_token: Annotated[Optional[str], Cookie()] = None,
+) -> str:
     """
     Validates sb_token against SOULBOLT API.
+    Token source priority: Authorization header > sb_token cookie.
     Returns soulbolt_account_id on success.
     Raises 401 on invalid/missing token.
     """
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or malformed authorization header")
+    token: Optional[str] = None
 
-    token = authorization.removeprefix("Bearer ").strip()
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+    elif sb_token:
+        token = sb_token
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing or malformed authorization")
 
     try:
         resp = httpx.post(
