@@ -17,12 +17,13 @@ function resolveToken() {
 
 export default function Nav() {
   const navigate = useNavigate();
+  // resolveToken() runs once on mount. Token is set in sessionStorage by Auth.jsx
+  // before this component mounts via the redirect chain.
   const [token, setToken] = useState(() => resolveToken());
 
-  // Re-check on every navigation so Nav reflects auth state after SSO redirect.
   useEffect(() => {
     setToken(resolveToken());
-  });
+  }, []);
 
   function handleSignOut() {
     sessionStorage.removeItem("sb_token");
