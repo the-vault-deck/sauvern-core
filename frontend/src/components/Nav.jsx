@@ -5,12 +5,13 @@ const SOULBOLT_URL = import.meta.env.VITE_SOULBOLT_URL || "https://soulbolt.ai";
 
 export default function Nav() {
   // Auth state: probe /api/creators/me — cookie is sent automatically.
-  // null = loading, true = authenticated, false = not authenticated.
+  // 401 = not authenticated. 200 or 404 (no profile yet) = authenticated.
+  // null = loading.
   const [authed, setAuthed] = useState(null);
 
   useEffect(() => {
     fetch("/api/creators/me", { credentials: "include" })
-      .then((r) => setAuthed(r.ok))
+      .then((r) => setAuthed(r.status !== 401))
       .catch(() => setAuthed(false));
   }, []);
 
