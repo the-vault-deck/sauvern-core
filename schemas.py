@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from pydantic import BaseModel, AnyUrl, field_validator, model_validator
 from typing import Literal
@@ -131,6 +132,41 @@ class FeatureToggleRequest(BaseModel):
 
 class AdminRejectRequest(BaseModel):
     reason: str | None = None
+
+# Admin: create listing on behalf of any creator
+class AdminListingCreate(BaseModel):
+    """Admin creates a listing for any creator by creator_id.
+    Listing types (mutually exclusive):
+      - Trial:    product_id set, price_cents null
+      - Purchase: price_cents set, product_id null — contact_value not required (Stripe CTA)
+      - Contact:  neither set — contact_value required
+    """
+    creator_id: str
+    title: str
+    description: str
+    category: str
+    price_cents: int | None = None
+    product_id: str | None = None
+    image_url: AnyUrl | None = None
+    contact_method: Literal["EMAIL", "URL"] = "URL"
+    contact_value: str | None = None
+    is_featured: bool = False
+
+    @model_validator(mode="after")
+    def validate_listing_type(self) -> "AdminListingCreate":
+        has_price = self.price_cents is not None
+        has_product = self.product_id is not None
+        has_contact = self.contact_value is not None
+        if has_price and has_product:
+            raise ValueError("price_cents and product_id are mutually exclusive")
+        if not has_product and not has_price and not has_contact:
+            raise ValueError("contact_value required for contact listings")
+        if has_contact:
+            if self.contact_method == "EMAIL" and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", self.contact_value):
+                raise ValueError("contact_value must be a valid email address")
+            if self.contact_method == "URL" and not self.contact_value.startswith(("http://", "https://")):
+                raise ValueError("contact_value must be a valid URL")
+        return self
 
 # Score
 class ScoreOut(BaseModel):

@@ -1,9 +1,8 @@
 """
 routers/admin.py
-SAUVERN admin endpoints — submission review queue, feature toggle,
-and creator profile creation on behalf of any soulbolt account.
+SAUVERN admin endpoints — submission review, feature toggle,
+creator profile creation, and listing creation on behalf of any creator.
 Gated by SAUVERN_ADMIN_ACCOUNT_ID env var.
-Only the account matching that ID can access these routes.
 """
 import os
 from datetime import datetime
@@ -11,8 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Listing, ListingIndex, CreatorProfile
-from schemas import ListingOut, AdminRejectRequest, CreatorOut, AdminCreatorCreate
+from schemas import ListingOut, AdminRejectRequest, CreatorOut, AdminCreatorCreate, AdminListingCreate
 from auth import require_sb_token
+from services.slug import generate_slug
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -20,9 +20,6 @@ ADMIN_ACCOUNT_ID = os.environ.get("SAUVERN_ADMIN_ACCOUNT_ID", "")
 
 
 def require_admin(account_id: str = Depends(require_sb_token)) -> str:
-    """Dependency: validates sb_token via require_sb_token, then checks admin ID.
-    Raises 503 if admin not configured, 403 if account is not admin.
-    """
     if not ADMIN_ACCOUNT_ID:
         raise HTTPException(status_code=503, detail="Admin not configured")
     if account_id != ADMIN_ACCOUNT_ID:
@@ -31,12 +28,7 @@ def require_admin(account_id: str = Depends(require_sb_token)) -> str:
 
 
 @router.get("/me")
-def get_admin_status(
-    account_id: str = Depends(require_sb_token),
-):
-    """Returns {is_admin: bool} for the current session.
-    Used by frontend to show/hide admin UI — no ID exposed to client.
-    """
+def get_admin_status(account_id: str = Depends(require_sb_token)):
     return {"is_admin": bool(ADMIN_ACCOUNT_ID) and account_id == ADMIN_ACCOUNT_ID}
 
 
@@ -46,18 +38,11 @@ def admin_create_creator(
     db: Session = Depends(get_db),
     admin_id: str = Depends(require_admin),
 ):
-    """Create a creator profile on behalf of any soulbolt account.
-    Spec decision: no existence check against soulbolt account store —
-    orphaned profiles permitted at admin discretion.
-    avatar_url and external_link validated as URLs at schema layer (AnyUrl).
-    """
     if db.query(CreatorProfile).filter(
         CreatorProfile.soulbolt_account_id == payload.soulbolt_account_id
     ).first():
         raise HTTPException(status_code=409, detail="Creator profile already exists for this account")
-    if db.query(CreatorProfile).filter(
-        CreatorProfile.handle == payload.handle
-    ).first():
+    if db.query(CreatorProfile).filter(CreatorProfile.handle == payload.handle).first():
         raise HTTPException(status_code=409, detail="Handle already taken")
 
     creator = CreatorProfile(
@@ -84,6 +69,51 @@ def admin_create_creator(
     )
 
 
+@router.post("/listings", response_model=ListingOut, status_code=201)
+def admin_create_listing(
+    payload: AdminListingCreate,
+    db: Session = Depends(get_db),
+    admin_id: str = Depends(require_admin),
+):
+    """Create a listing on behalf of any creator by creator_id.
+    Listing + ListingIndex written in a single transaction. Rolls back on failure.
+    """
+    creator = db.query(CreatorProfile).filter(CreatorProfile.id == payload.creator_id).first()
+    if not creator:
+        raise HTTPException(status_code=404, detail="Creator not found")
+
+    slug = generate_slug(payload.title, creator.id, db)
+    listing = Listing(
+        creator_id=creator.id,
+        title=payload.title,
+        slug=slug,
+        description=payload.description,
+        category=payload.category,
+        price_cents=payload.price_cents,
+        product_id=payload.product_id,
+        image_url=str(payload.image_url) if payload.image_url else None,
+        contact_method=payload.contact_method,
+        contact_value=payload.contact_value,
+        is_featured=payload.is_featured,
+        status="ACTIVE",
+    )
+    try:
+        db.add(listing)
+        db.flush()
+        index_entry = ListingIndex(
+            listing_id=listing.id,
+            creator_id=creator.id,
+            published_at=listing.created_at,
+        )
+        db.add(index_entry)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Listing creation failed")
+    db.refresh(listing)
+    return listing
+
+
 @router.get("/submissions", response_model=list[ListingOut])
 def get_pending_submissions(
     status: str = "PENDING",
@@ -92,7 +122,6 @@ def get_pending_submissions(
     db: Session = Depends(get_db),
     admin_id: str = Depends(require_admin),
 ):
-    """Returns listings filtered by status. Default: PENDING."""
     return (
         db.query(Listing)
         .filter(Listing.status == status.upper())
