@@ -9,6 +9,9 @@ product_id and price_cents are mutually exclusive listing types.
 Enforced at the application layer (submissions router).
 
 Idempotent: uses ADD COLUMN IF NOT EXISTS pattern.
+
+Downgrade: no-op. Append-only platform — columns are never dropped.
+Data written to product_id must not be destroyed on rollback.
 """
 from alembic import op
 import sqlalchemy as sa
@@ -20,8 +23,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    with op.get_context().autocommit_block():
-        pass
     # PostgreSQL supports ADD COLUMN IF NOT EXISTS
     op.execute("""
         ALTER TABLE listings
@@ -30,4 +31,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column('listings', 'product_id')
+    # Append-only platform. Columns are never dropped.
+    # product_id data must be preserved. Downgrade is intentionally a no-op.
+    raise NotImplementedError(
+        "0005 downgrade is blocked. Append-only platform — product_id column cannot be dropped. "
+        "Restore from backup if rollback is required."
+    )
