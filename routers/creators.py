@@ -9,12 +9,22 @@ from services.influence import fetch_and_cache
 
 router = APIRouter(prefix="/creators", tags=["creators"])
 
-ADMIN_ACCOUNT_ID = "1ff3e23d-d066-4f49-a954-7f2efc6ae4ff"
+# Admin bypass ID injected via env var — never hardcoded.
+# SAUVERN_ADMIN_ACCOUNT_ID must be set on Railway.
+# Falls back to empty string — no bypass if unset.
+_ADMIN_ACCOUNT_ID = os.environ.get("SAUVERN_ADMIN_ACCOUNT_ID", "")
 
 
 def _registration_open(account_id: str) -> bool:
-    """Return True if registration is permitted for this account."""
-    if account_id == ADMIN_ACCOUNT_ID:
+    """
+    Return True if registration is permitted for this account.
+    Gate logic:
+      - Admin account always bypasses the gate.
+      - All others: SAUVERN_OPEN_REGISTRATION must be exactly "true" (case-insensitive).
+      - Default (env var absent): False — gate closed.
+    Does not raise. Returns bool only.
+    """
+    if _ADMIN_ACCOUNT_ID and account_id == _ADMIN_ACCOUNT_ID:
         return True
     return os.environ.get("SAUVERN_OPEN_REGISTRATION", "false").lower() == "true"
 
@@ -55,8 +65,11 @@ def get_creator(handle: str, db: Session = Depends(get_db)):
 def create_creator(
     payload: CreatorCreate,
     db: Session = Depends(get_db),
-    account_id: str = Depends(require_sb_token),
+    account_id: str = Depends(require_sb_token),  # auth fires first — account_id required
 ):
+    # Gate check — executes only after require_sb_token succeeds.
+    # _registration_open() is a pure boolean function; cannot raise.
+    # 403 is the only non-success path from the gate.
     if not _registration_open(account_id):
         raise HTTPException(
             status_code=403,
