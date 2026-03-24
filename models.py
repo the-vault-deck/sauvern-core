@@ -36,6 +36,9 @@ class Listing(Base):
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     contact_method: Mapped[str] = mapped_column(String, default="EMAIL", nullable=False)
     contact_value: Mapped[str | None] = mapped_column(String, nullable=True)
+    # product_id: set when this listing represents a SOULBOLT tool (trial CTA).
+    # Mutually exclusive with price_cents. Validated at submission time.
+    product_id: Mapped[str | None] = mapped_column(String, nullable=True)
     # status: PENDING | APPROVED | REJECTED | ARCHIVED
     status: Mapped[str] = mapped_column(String, default="PENDING", nullable=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

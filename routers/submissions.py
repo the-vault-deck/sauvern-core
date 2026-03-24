@@ -3,6 +3,11 @@ routers/submissions.py
 Public submission endpoint.
 Any authenticated SOULBOLT user with a creator profile can submit a listing.
 Listing is created in PENDING status — not visible on index until approved.
+
+Listing types (mutually exclusive, enforced by ListingSubmit schema validator):
+  - Trial listing:    product_id set, price_cents null
+  - Purchase listing: price_cents set, product_id null
+  - Contact listing:  neither set, contact_value required
 """
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
@@ -37,6 +42,7 @@ def submit_listing(
         description=payload.description,
         category=payload.category,
         price_cents=payload.price_cents,
+        product_id=payload.product_id,
         image_url=payload.image_url,
         contact_method=payload.contact_method,
         contact_value=payload.contact_value,
