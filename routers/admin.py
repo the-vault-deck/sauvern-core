@@ -1,16 +1,17 @@
 """
 routers/admin.py
-SAUVERN admin endpoints — submission review queue + feature toggle.
+SAUVERN admin endpoints — submission review queue, feature toggle,
+and creator profile creation on behalf of any soulbolt account.
 Gated by SAUVERN_ADMIN_ACCOUNT_ID env var.
 Only the account matching that ID can access these routes.
 """
 import os
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from database import get_db
-from models import Listing, ListingIndex
-from schemas import ListingOut, AdminRejectRequest
+from models import Listing, ListingIndex, CreatorProfile
+from schemas import ListingOut, AdminRejectRequest, CreatorOut, AdminCreatorCreate
 from auth import require_sb_token
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -37,6 +38,50 @@ def get_admin_status(
     Used by frontend to show/hide admin UI — no ID exposed to client.
     """
     return {"is_admin": bool(ADMIN_ACCOUNT_ID) and account_id == ADMIN_ACCOUNT_ID}
+
+
+@router.post("/creators", response_model=CreatorOut, status_code=201)
+def admin_create_creator(
+    payload: AdminCreatorCreate,
+    db: Session = Depends(get_db),
+    admin_id: str = Depends(require_admin),
+):
+    """Create a creator profile on behalf of any soulbolt account.
+    Spec decision: no existence check against soulbolt account store —
+    orphaned profiles permitted at admin discretion.
+    avatar_url and external_link validated as URLs at schema layer (AnyUrl).
+    """
+    if db.query(CreatorProfile).filter(
+        CreatorProfile.soulbolt_account_id == payload.soulbolt_account_id
+    ).first():
+        raise HTTPException(status_code=409, detail="Creator profile already exists for this account")
+    if db.query(CreatorProfile).filter(
+        CreatorProfile.handle == payload.handle
+    ).first():
+        raise HTTPException(status_code=409, detail="Handle already taken")
+
+    creator = CreatorProfile(
+        soulbolt_account_id=payload.soulbolt_account_id,
+        handle=payload.handle,
+        display_name=payload.display_name,
+        bio=payload.bio,
+        avatar_url=str(payload.avatar_url) if payload.avatar_url else None,
+        external_link=str(payload.external_link) if payload.external_link else None,
+    )
+    db.add(creator)
+    db.commit()
+    db.refresh(creator)
+    return CreatorOut(
+        id=creator.id,
+        soulbolt_account_id=creator.soulbolt_account_id,
+        handle=creator.handle,
+        display_name=creator.display_name,
+        bio=creator.bio,
+        avatar_url=creator.avatar_url,
+        external_link=creator.external_link,
+        influence_score_display=creator.influence_score_cache / 10000,
+        created_at=creator.created_at,
+    )
 
 
 @router.get("/submissions", response_model=list[ListingOut])

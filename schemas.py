@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, AnyUrl, field_validator, model_validator
 from typing import Literal
 
 # Creator
@@ -28,6 +28,15 @@ class CreatorOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+# Admin: create creator profile on behalf of any soulbolt account
+class AdminCreatorCreate(BaseModel):
+    soulbolt_account_id: str
+    handle: str
+    display_name: str
+    bio: str | None = None
+    avatar_url: AnyUrl | None = None
+    external_link: AnyUrl | None = None
 
 # Minimal creator shape embedded in featured listing responses
 class CreatorSnippet(BaseModel):
