@@ -3,9 +3,24 @@ import { useNavigate } from "react-router-dom";
 
 const STATUS_TABS = ["PENDING", "APPROVED", "REJECTED"];
 
+// Migrate any token left in localStorage into sessionStorage, then clear localStorage.
+// Structural guarantee: no page in this app has a live localStorage read path after this runs.
+function resolveToken() {
+  let token = sessionStorage.getItem("sb_token");
+  if (!token) {
+    const legacy = localStorage.getItem("sb_token");
+    if (legacy) {
+      sessionStorage.setItem("sb_token", legacy);
+      localStorage.removeItem("sb_token");
+      token = legacy;
+    }
+  }
+  return token;
+}
+
 export default function Admin() {
   const navigate = useNavigate();
-  const token = sessionStorage.getItem("sb_token") || localStorage.getItem("sb_token");
+  const token = resolveToken();
   if (!token) { navigate("/login"); return null; }
 
   const [tab, setTab] = useState("PENDING");
