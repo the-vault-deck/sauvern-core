@@ -10,12 +10,14 @@ import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CreatorSetup from "./pages/CreatorSetup";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
+import Auth from "./pages/Auth";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Nav />
       <Routes>
+        <Route path="/auth" element={<Auth />} />
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/create" element={<Create />} />
