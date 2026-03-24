@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -8,6 +9,16 @@ from services.influence import fetch_and_cache
 
 router = APIRouter(prefix="/creators", tags=["creators"])
 
+ADMIN_ACCOUNT_ID = "1ff3e23d-d066-4f49-a954-7f2efc6ae4ff"
+
+
+def _registration_open(account_id: str) -> bool:
+    """Return True if registration is permitted for this account."""
+    if account_id == ADMIN_ACCOUNT_ID:
+        return True
+    return os.environ.get("SAUVERN_OPEN_REGISTRATION", "false").lower() == "true"
+
+
 @router.get("", response_model=list[CreatorOut])
 def list_creators(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     creators = (
@@ -16,6 +27,7 @@ def list_creators(skip: int = 0, limit: int = 20, db: Session = Depends(get_db))
         .offset(skip).limit(limit).all()
     )
     return [_to_out(c) for c in creators]
+
 
 @router.get("/me", response_model=CreatorOut)
 def get_my_creator(
@@ -29,6 +41,7 @@ def get_my_creator(
         raise HTTPException(status_code=404, detail="Creator profile not found")
     return _to_out(creator)
 
+
 @router.get("/{handle}", response_model=CreatorOut)
 def get_creator(handle: str, db: Session = Depends(get_db)):
     creator = db.query(CreatorProfile).filter(CreatorProfile.handle == handle).first()
@@ -37,12 +50,19 @@ def get_creator(handle: str, db: Session = Depends(get_db)):
     fetch_and_cache(db, creator)
     return _to_out(creator)
 
+
 @router.post("", response_model=CreatorOut, status_code=201)
 def create_creator(
     payload: CreatorCreate,
     db: Session = Depends(get_db),
     account_id: str = Depends(require_sb_token),
 ):
+    if not _registration_open(account_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Creator registration is currently invite-only. Contact us to apply.",
+        )
+
     if db.query(CreatorProfile).filter(CreatorProfile.soulbolt_account_id == account_id).first():
         raise HTTPException(status_code=409, detail="Creator profile already exists for this account")
     if db.query(CreatorProfile).filter(CreatorProfile.handle == payload.handle).first():
@@ -59,6 +79,7 @@ def create_creator(
     db.commit()
     db.refresh(creator)
     return _to_out(creator)
+
 
 @router.patch("/{handle}", response_model=CreatorOut)
 def update_creator(
@@ -84,6 +105,7 @@ def update_creator(
     db.refresh(creator)
     return _to_out(creator)
 
+
 @router.get("/{handle}/score", response_model=ScoreOut)
 def get_score(handle: str, db: Session = Depends(get_db)):
     creator = db.query(CreatorProfile).filter(CreatorProfile.handle == handle).first()
@@ -94,6 +116,7 @@ def get_score(handle: str, db: Session = Depends(get_db)):
         influence_score_display=creator.influence_score_cache / 10000,
         cached_at=creator.score_cached_at,
     )
+
 
 def _to_out(c: CreatorProfile) -> CreatorOut:
     return CreatorOut(
