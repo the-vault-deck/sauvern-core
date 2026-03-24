@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -25,7 +25,6 @@ export default function Dashboard() {
     <div className="page-shell">
       <div className="page-header fade-up">
         <h1>My Listings</h1>
-        <Link to="/create" className="btn btn-primary">+ New Listing</Link>
       </div>
 
       {error && <div className="error-state" role="alert">Unable to load listings</div>}
@@ -34,7 +33,6 @@ export default function Dashboard() {
       {!loading && !error && listings.length === 0 && (
         <div className="empty-state fade-up">
           <p>No listings yet.</p>
-          <Link to="/create" className="btn btn-ghost">Create your first listing</Link>
         </div>
       )}
 
@@ -52,11 +50,7 @@ export default function Dashboard() {
             <tbody>
               {listings.map((l) => (
                 <tr key={l.id}>
-                  <td>
-                    <Link to={`/dashboard`} style={{ color: "var(--text-primary)" }}>
-                      {l.title}
-                    </Link>
-                  </td>
+                  <td style={{ color: "var(--text-primary)" }}>{l.title}</td>
                   <td>
                     <span className={`status-chip ${l.status.toLowerCase()}`}>
                       {l.status}
