@@ -1,10 +1,15 @@
-const ADMIN_ID = import.meta.env.VITE_SAUVERN_ADMIN_ACCOUNT_ID ?? "";
-
 /**
- * Returns true if the current session cookie corresponds to the admin account.
- * Used client-side only to show/hide admin UI elements.
- * Server enforces the real gate — this is purely cosmetic.
+ * Fetches admin status from the server for the current session.
+ * Returns true if the cookie session belongs to the admin account.
+ * No privileged IDs are stored in or derived from the client bundle.
  */
-export function isAdmin() {
-  return ADMIN_ID !== "" && document.cookie.includes("sb_session=");
+export async function fetchIsAdmin() {
+  try {
+    const r = await fetch("/api/admin/me", { credentials: "include" });
+    if (!r.ok) return false;
+    const data = await r.json();
+    return data.is_admin === true;
+  } catch {
+    return false;
+  }
 }

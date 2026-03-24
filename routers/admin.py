@@ -1,6 +1,6 @@
 """
 routers/admin.py
-SAUVERN admin endpoints — submission review queue.
+SAUVERN admin endpoints — submission review queue + feature toggle.
 Gated by SAUVERN_ADMIN_ACCOUNT_ID env var.
 Only the account matching that ID can access these routes.
 """
@@ -19,11 +19,24 @@ ADMIN_ACCOUNT_ID = os.environ.get("SAUVERN_ADMIN_ACCOUNT_ID", "")
 
 
 def require_admin(account_id: str = Depends(require_sb_token)) -> str:
+    """Dependency: validates sb_token via require_sb_token, then checks admin ID.
+    Raises 503 if admin not configured, 403 if account is not admin.
+    """
     if not ADMIN_ACCOUNT_ID:
         raise HTTPException(status_code=503, detail="Admin not configured")
     if account_id != ADMIN_ACCOUNT_ID:
         raise HTTPException(status_code=403, detail="Forbidden")
     return account_id
+
+
+@router.get("/me")
+def get_admin_status(
+    account_id: str = Depends(require_sb_token),
+):
+    """Returns {is_admin: bool} for the current session.
+    Used by frontend to show/hide admin UI — no ID exposed to client.
+    """
+    return {"is_admin": bool(ADMIN_ACCOUNT_ID) and account_id == ADMIN_ACCOUNT_ID}
 
 
 @router.get("/submissions", response_model=list[ListingOut])
@@ -63,7 +76,6 @@ def approve_submission(
     listing.rejection_reason = None
     db.commit()
 
-    # Insert into listing_index if not already present
     existing = db.query(ListingIndex).filter(ListingIndex.listing_id == listing_id).first()
     if not existing:
         index_entry = ListingIndex(
@@ -96,7 +108,6 @@ def reject_submission(
     listing.reviewed_by = admin_id
     listing.rejection_reason = body.reason
 
-    # Remove from index if somehow it got in
     index_entry = db.query(ListingIndex).filter(ListingIndex.listing_id == listing_id).first()
     if index_entry:
         db.delete(index_entry)

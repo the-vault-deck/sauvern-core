@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { isAdmin } from "../utils/auth";
+import { fetchIsAdmin } from "../utils/auth";
 
 export default function Create() {
   const navigate = useNavigate();
@@ -20,15 +20,15 @@ export default function Create() {
   useEffect(() => {
     fetch("/api/creators/me", { credentials: "include" })
       .then((r) => {
-        if (r.status === 401) { navigate("/login"); return; }
-        if (r.status === 404) { navigate("/creators/setup"); return; }
-        if (!r.ok) { setError("Unable to verify creator profile"); return; }
+        if (r.status === 401) { navigate("/login"); return null; }
+        if (r.status === 404) { navigate("/creators/setup"); return null; }
+        if (!r.ok) { setError("Unable to verify creator profile"); return null; }
         return r.json();
       })
       .then((creator) => {
         if (!creator) return;
         setProfileChecked(true);
-        setAdminMode(isAdmin());
+        fetchIsAdmin().then(setAdminMode);
       })
       .catch(() => setError("Network error checking profile"));
   }, []);
