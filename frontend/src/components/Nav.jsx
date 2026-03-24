@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+const SOULBOLT_URL = import.meta.env.VITE_SOULBOLT_URL || "https://soulbolt.ai";
+
 // Migrate any token left in localStorage into sessionStorage, then clear localStorage.
 function resolveToken() {
   let token = sessionStorage.getItem("sb_token");
@@ -17,8 +19,6 @@ function resolveToken() {
 
 export default function Nav() {
   const navigate = useNavigate();
-  // resolveToken() runs once on mount. Token is set in sessionStorage by Auth.jsx
-  // before this component mounts via the redirect chain.
   const [token, setToken] = useState(() => resolveToken());
 
   useEffect(() => {
@@ -29,7 +29,8 @@ export default function Nav() {
     sessionStorage.removeItem("sb_token");
     localStorage.removeItem("sb_token");
     setToken(null);
-    navigate("/login");
+    // Return to SOULBOLT on sign out — SSO is the only auth path
+    window.location.href = SOULBOLT_URL;
   }
 
   return (
@@ -42,7 +43,6 @@ export default function Nav() {
           {token ? (
             <>
               <li><Link to="/dashboard">Dashboard</Link></li>
-              <li><Link to="/create" className="nav-cta">+ New Listing</Link></li>
               <li>
                 <button
                   onClick={handleSignOut}
@@ -54,8 +54,19 @@ export default function Nav() {
             </>
           ) : (
             <>
-              <li><Link to="/login">Sign In</Link></li>
-              <li><Link to="/login" className="nav-cta">Get Started</Link></li>
+              <li>
+                <a
+                  href={SOULBOLT_URL}
+                  style={{ color: "var(--text-muted)", fontSize: "0.8rem", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.05em", textDecoration: "none" }}
+                >
+                  Sign In
+                </a>
+              </li>
+              <li>
+                <a href={SOULBOLT_URL} className="nav-cta">
+                  Get Started
+                </a>
+              </li>
             </>
           )}
         </ul>
