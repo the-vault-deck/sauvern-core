@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 
 const SOULBOLT_URL = import.meta.env.VITE_SOULBOLT_URL || "https://soulbolt.ai";
 
+// Login.jsx — manual token entry fallback
+// Primary auth path is SSO via /auth (SOULBOLT dashboard handoff).
+// This page exists for direct access / dev use.
+// Token stored in sessionStorage — not localStorage.
+
 export default function Login() {
   const navigate = useNavigate();
   const [token, setToken] = useState("");
@@ -18,7 +23,7 @@ export default function Login() {
         headers: { Authorization: `Bearer ${token.trim()}` },
       });
       if (r.status === 401) { setError("Invalid token"); return; }
-      localStorage.setItem("sb_token", token.trim());
+      sessionStorage.setItem("sb_token", token.trim());
       navigate("/dashboard");
     } catch {
       setError("Network error — try again");
@@ -51,7 +56,7 @@ export default function Login() {
           </button>
         </div>
         <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>
-          Don't have an account?{" "}
+          Don’t have an account?{" "}
           <a href={SOULBOLT_URL} target="_blank" rel="noreferrer">
             Get SOULBOLT
           </a>

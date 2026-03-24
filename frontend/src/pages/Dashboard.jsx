@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("sb_token");
+  const token = sessionStorage.getItem("sb_token") || localStorage.getItem("sb_token");
   if (!token) { navigate("/login"); return null; }
 
   const [listings, setListings] = useState([]);
