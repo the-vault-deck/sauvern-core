@@ -1,11 +1,33 @@
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+
+// Migrate any token left in localStorage into sessionStorage, then clear localStorage.
+function resolveToken() {
+  let token = sessionStorage.getItem("sb_token");
+  if (!token) {
+    const legacy = localStorage.getItem("sb_token");
+    if (legacy) {
+      sessionStorage.setItem("sb_token", legacy);
+      localStorage.removeItem("sb_token");
+      token = legacy;
+    }
+  }
+  return token;
+}
 
 export default function Nav() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("sb_token");
+  const [token, setToken] = useState(() => resolveToken());
+
+  // Re-check on every navigation so Nav reflects auth state after SSO redirect.
+  useEffect(() => {
+    setToken(resolveToken());
+  });
 
   function handleSignOut() {
+    sessionStorage.removeItem("sb_token");
     localStorage.removeItem("sb_token");
+    setToken(null);
     navigate("/login");
   }
 
