@@ -1,24 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// Migrate any token left in localStorage into sessionStorage, then clear localStorage.
-function resolveToken() {
-  let token = sessionStorage.getItem("sb_token");
-  if (!token) {
-    const legacy = localStorage.getItem("sb_token");
-    if (legacy) {
-      sessionStorage.setItem("sb_token", legacy);
-      localStorage.removeItem("sb_token");
-      token = legacy;
-    }
-  }
-  return token;
-}
-
 export default function Create() {
   const navigate = useNavigate();
-  const token = resolveToken();
-  if (!token) { navigate("/login"); return null; }
 
   const [profileChecked, setProfileChecked] = useState(false);
   const [fields, setFields] = useState({
@@ -31,8 +15,9 @@ export default function Create() {
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    fetch("/api/creators/me", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/creators/me", { credentials: "include" })
       .then((r) => {
+        if (r.status === 401) { navigate("/login"); return; }
         if (r.status === 404) { navigate("/creators/setup"); return; }
         if (!r.ok) { setError("Unable to verify creator profile"); return; }
         setProfileChecked(true);
@@ -63,9 +48,11 @@ export default function Create() {
       };
       const r = await fetch("/api/submissions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
+      if (r.status === 401) { navigate("/login"); return; }
       if (!r.ok) { const err = await r.json(); setError(err.detail || "Submission failed"); return; }
       setSubmitted(true);
     } catch { setError("Network error — please try again"); }

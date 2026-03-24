@@ -9,16 +9,20 @@ export default function Checkout() {
 
   useEffect(() => {
     if (!listingId) { navigate("/"); return; }
-    const token = localStorage.getItem("sb_token");
-    if (!token) { navigate("/login"); return; }
 
     fetch("/api/checkout/session", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ listing_id: listingId }),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401) { navigate("/login"); return null; }
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
       .then((data) => {
+        if (!data) return;
         if (data.session_url) { window.location.href = data.session_url; }
         else { setError("Could not create checkout session."); }
       })

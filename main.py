@@ -2,7 +2,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 import os
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -44,6 +44,14 @@ async def sso_token(body: SSOTokenRequest):
     Validates the token against SOULBOLT API, then issues an HttpOnly cookie
     scoped to sauvern.com. Frontend never stores the token — cookie is sent
     automatically by the browser on all subsequent requests.
+
+    Failure response shapes (all declared, no silent failures):
+      400 {"detail": "sb_token required"}         — empty body field
+      401 {"detail": "Invalid or expired token"}  — soulbolt /auth/validate returned non-200
+      401 {"detail": "Token validation returned no account ID"} — soulbolt response missing field
+      503 {"detail": "Auth service unreachable"}  — httpx.RequestError (network / timeout)
+    Success:
+      200 {"ok": true, "soulbolt_account_id": "<uuid>"} + Set-Cookie: sb_token (HttpOnly)
     """
     if not body.sb_token:
         raise HTTPException(status_code=400, detail="sb_token required")
@@ -82,6 +90,7 @@ async def sso_token(body: SSOTokenRequest):
 async def logout():
     """
     Clears the sb_token cookie. Frontend redirects to SOULBOLT after calling this.
+    Success: 200 {"ok": true}
     """
     response = JSONResponse(content={"ok": True})
     response.delete_cookie(key="sb_token", path="/")

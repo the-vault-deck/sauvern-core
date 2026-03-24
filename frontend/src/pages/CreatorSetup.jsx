@@ -1,24 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-// Migrate any token left in localStorage into sessionStorage, then clear localStorage.
-function resolveToken() {
-  let token = sessionStorage.getItem("sb_token");
-  if (!token) {
-    const legacy = localStorage.getItem("sb_token");
-    if (legacy) {
-      sessionStorage.setItem("sb_token", legacy);
-      localStorage.removeItem("sb_token");
-      token = legacy;
-    }
-  }
-  return token;
-}
-
 export default function CreatorSetup() {
   const navigate = useNavigate();
-  const token = resolveToken();
-  if (!token) { navigate("/login"); return null; }
 
   const [fields, setFields] = useState({ display_name: "", handle: "", bio: "" });
   const [error, setError] = useState(null);
@@ -36,13 +20,15 @@ export default function CreatorSetup() {
     try {
       const r = await fetch("/api/creators", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           display_name: fields.display_name.trim(),
           handle: fields.handle.trim().toLowerCase().replace(/[^a-z0-9-]/g, ""),
           bio: fields.bio.trim() || null,
         }),
       });
+      if (r.status === 401) { navigate("/login"); return; }
       if (!r.ok) { const err = await r.json(); setError(err.detail || "Profile creation failed"); return; }
       navigate("/create");
     } catch { setError("Network error — please try again"); }
