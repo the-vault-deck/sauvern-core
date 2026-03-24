@@ -1,9 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+// Migrate any token left in localStorage into sessionStorage, then clear localStorage.
+function resolveToken() {
+  let token = sessionStorage.getItem("sb_token");
+  if (!token) {
+    const legacy = localStorage.getItem("sb_token");
+    if (legacy) {
+      sessionStorage.setItem("sb_token", legacy);
+      localStorage.removeItem("sb_token");
+      token = legacy;
+    }
+  }
+  return token;
+}
+
 export default function CreatorSetup() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("sb_token");
+  const token = resolveToken();
   if (!token) { navigate("/login"); return null; }
 
   const [fields, setFields] = useState({ display_name: "", handle: "", bio: "" });

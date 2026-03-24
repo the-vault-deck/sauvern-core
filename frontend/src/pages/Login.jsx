@@ -5,8 +5,7 @@ const SOULBOLT_URL = import.meta.env.VITE_SOULBOLT_URL || "https://soulbolt.ai";
 
 // Login.jsx — manual token entry fallback
 // Primary auth path is SSO via /auth (SOULBOLT dashboard handoff).
-// This page exists for direct access / dev use.
-// Token stored in sessionStorage — not localStorage.
+// Token stored in sessionStorage only. No localStorage write.
 
 export default function Login() {
   const navigate = useNavigate();
@@ -56,7 +55,7 @@ export default function Login() {
           </button>
         </div>
         <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <a href={SOULBOLT_URL} target="_blank" rel="noreferrer">
             Get SOULBOLT
           </a>

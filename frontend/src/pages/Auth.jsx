@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 // Auth.jsx — SOULBOLT SSO entry point
 // Receives sb_token via URL param from soulbolt.ai dashboard.
 // soulbolt navigates to: https://sauvern.com/auth?sb_token=<jwt>
-// Stores token in sessionStorage (not localStorage — platform auth rule).
+// Stores token in sessionStorage only. No localStorage write.
 // Redirects to home. Mirrors the cantlie SSO pattern.
 
 export default function Auth() {
