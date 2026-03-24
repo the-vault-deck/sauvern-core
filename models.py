@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, Integer, ForeignKey, UniqueConstraint, DateTime
+from sqlalchemy import String, Text, Integer, Boolean, ForeignKey, UniqueConstraint, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
@@ -36,10 +36,10 @@ class Listing(Base):
     image_url: Mapped[str | None] = mapped_column(String, nullable=True)
     contact_method: Mapped[str] = mapped_column(String, default="EMAIL", nullable=False)
     contact_value: Mapped[str | None] = mapped_column(String, nullable=True)
-    # product_id: set when this listing represents a SOULBOLT tool (trial CTA).
-    # Mutually exclusive with price_cents. Validated at submission time.
     product_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    # status: PENDING | APPROVED | REJECTED | ARCHIVED
+    # is_featured: mutable control metadata (admin-only). Exception approved 2026-03-24.
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # status: PENDING | APPROVED | REJECTED | ARCHIVED | ACTIVE
     status: Mapped[str] = mapped_column(String, default="PENDING", nullable=False)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { isAdmin } from "../utils/auth";
 
 export default function Create() {
   const navigate = useNavigate();
 
   const [profileChecked, setProfileChecked] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
   const [fields, setFields] = useState({
     title: "", description: "", category: "",
     price_cents: "", image_url: "",
     contact_method: "EMAIL", contact_value: "",
+    is_featured: false,
   });
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -20,13 +23,19 @@ export default function Create() {
         if (r.status === 401) { navigate("/login"); return; }
         if (r.status === 404) { navigate("/creators/setup"); return; }
         if (!r.ok) { setError("Unable to verify creator profile"); return; }
+        return r.json();
+      })
+      .then((creator) => {
+        if (!creator) return;
         setProfileChecked(true);
+        setAdminMode(isAdmin());
       })
       .catch(() => setError("Network error checking profile"));
   }, []);
 
   function handleChange(e) {
-    setFields((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value, type, checked } = e.target;
+    setFields((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   }
 
   async function handleSubmit() {
@@ -45,8 +54,9 @@ export default function Create() {
         contact_value: fields.contact_value.trim(),
         price_cents: fields.price_cents ? parseInt(fields.price_cents, 10) : null,
         image_url: fields.image_url || null,
+        is_featured: adminMode ? fields.is_featured : false,
       };
-      const r = await fetch("/api/submissions", {
+      const r = await fetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -66,15 +76,18 @@ export default function Create() {
       <div className="page-shell">
         <div style={{ maxWidth: 600 }} className="fade-up">
           <div className="page-header">
-            <h1>Submitted</h1>
+            <h1>Created</h1>
           </div>
           <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
-            Your listing has been submitted for review. The SAUVERN team will
-            approve or reject it. You can track the status in your dashboard.
+            Listing is live.
+            {fields.is_featured && adminMode && " Featured on the home page."}
           </p>
           <div style={{ display: "flex", gap: "1rem" }}>
             <button className="btn btn-primary" onClick={() => navigate("/dashboard")}>Go to Dashboard</button>
-            <button className="btn" onClick={() => { setSubmitted(false); setFields({ title: "", description: "", category: "", price_cents: "", image_url: "", contact_method: "EMAIL", contact_value: "" }); }}>Submit Another</button>
+            <button className="btn" onClick={() => {
+              setSubmitted(false);
+              setFields({ title: "", description: "", category: "", price_cents: "", image_url: "", contact_method: "EMAIL", contact_value: "", is_featured: false });
+            }}>Add Another</button>
           </div>
         </div>
       </div>
@@ -85,10 +98,7 @@ export default function Create() {
     <div className="page-shell">
       <div style={{ maxWidth: 600 }} className="fade-up">
         <div className="page-header">
-          <h1>Submit a Listing</h1>
-          <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem", fontSize: "0.9rem" }}>
-            All listings are reviewed before going live on SAUVERN.
-          </p>
+          <h1>New Listing</h1>
         </div>
         {error && <div className="error-state" role="alert" style={{ marginBottom: "1rem" }}>{error}</div>}
         <div className="form-stack">
@@ -105,7 +115,7 @@ export default function Create() {
             <textarea name="description" value={fields.description} onChange={handleChange} placeholder="Describe your listing…" />
           </div>
           <div className="form-group">
-            <label className="form-label">Pricing model</label>
+            <label className="form-label">Pricing</label>
             <input name="price_cents" value={fields.price_cents} onChange={handleChange} placeholder="e.g. 4900 = $49.00 — leave blank for free" type="number" min="0" />
           </div>
           <div className="form-group">
@@ -126,8 +136,21 @@ export default function Create() {
                 placeholder={fields.contact_method === "EMAIL" ? "you@domain.com" : "https://…"} />
             </div>
           </div>
+          {adminMode && (
+            <div className="form-group" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                id="is_featured"
+                name="is_featured"
+                checked={fields.is_featured}
+                onChange={handleChange}
+                style={{ width: "auto", accentColor: "var(--accent)" }}
+              />
+              <label htmlFor="is_featured" className="form-label" style={{ margin: 0 }}>Featured</label>
+            </div>
+          )}
           <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting} style={{ alignSelf: "flex-start" }}>
-            {submitting ? "Submitting…" : "Submit for Review"}
+            {submitting ? "Saving…" : "Create Listing"}
           </button>
         </div>
       </div>

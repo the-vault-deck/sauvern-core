@@ -2,24 +2,42 @@ import { useEffect, useState } from "react";
 import ListingCard from "../components/ListingCard";
 
 export default function Home() {
-  const [listings, setListings] = useState([]);
+  const [items, setItems] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetch("/api/listings/index")
+  function fetchFeatured(cursor, append) {
+    const url = cursor
+      ? `/api/listings/featured?limit=12&cursor=${encodeURIComponent(cursor)}`
+      : "/api/listings/featured?limit=12";
+
+    return fetch(url)
       .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(setListings)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        setItems((prev) => append ? [...prev, ...data.items] : data.items);
+        setNextCursor(data.next_cursor);
+      })
+      .catch((e) => setError(e.message));
+  }
+
+  useEffect(() => {
+    fetchFeatured(null, false).finally(() => setLoading(false));
   }, []);
+
+  function handleLoadMore() {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    fetchFeatured(nextCursor, true).finally(() => setLoadingMore(false));
+  }
 
   return (
     <div className="page-shell">
       <div className="home-hero fade-up">
         <span className="home-hero-eyebrow">Marketplace</span>
-        <h1>The Index</h1>
-        <p>Published work from verified creators. Backed by Append-Only Identity.</p>
+        <h1>Featured</h1>
+        <p>Curated work from verified creators. Backed by Append-Only Identity.</p>
       </div>
 
       {error && <div className="error-state" role="alert">Unable to load listings</div>}
@@ -30,16 +48,29 @@ export default function Home() {
             <div key={i} className="listing-card skeleton" aria-hidden="true" />
           ))}
         </div>
-      ) : listings.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="empty-state">
-          <p>No listings yet. Be the first.</p>
+          <p>No listings available.</p>
         </div>
       ) : (
-        <div className="listing-grid">
-          {listings.map((l) => (
-            <ListingCard key={l.id} listing={l} />
-          ))}
-        </div>
+        <>
+          <div className="listing-grid">
+            {items.map((l) => (
+              <ListingCard key={l.id} listing={l} creator={l.creator} />
+            ))}
+          </div>
+          {nextCursor && (
+            <div style={{ display: "flex", justifyContent: "center", marginTop: "2rem" }}>
+              <button
+                className="btn"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? "Loading…" : "Load more"}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

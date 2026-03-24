@@ -29,6 +29,14 @@ class CreatorOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+# Minimal creator shape embedded in featured listing responses
+class CreatorSnippet(BaseModel):
+    handle: str
+    display_name: str
+    avatar_url: str | None
+
+    model_config = {"from_attributes": True}
+
 # Listing
 class ListingCreate(BaseModel):
     title: str
@@ -38,6 +46,7 @@ class ListingCreate(BaseModel):
     image_url: str | None = None
     contact_method: Literal["EMAIL", "URL"]
     contact_value: str
+    is_featured: bool = False
 
     @field_validator("contact_method")
     @classmethod
@@ -87,6 +96,7 @@ class ListingOut(BaseModel):
     image_url: str | None
     contact_method: str
     contact_value: str | None
+    is_featured: bool
     status: str
     submitted_at: datetime | None
     reviewed_at: datetime | None
@@ -96,6 +106,20 @@ class ListingOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class FeaturedListingOut(BaseModel):
+    id: str
+    title: str
+    description: str | None
+    price_cents: int | None
+    external_link: str | None
+    listing_type: str  # trial | purchase | contact
+    creator: CreatorSnippet
+
+    model_config = {"from_attributes": True}
+
+class FeatureToggleRequest(BaseModel):
+    is_featured: bool
+
 class AdminRejectRequest(BaseModel):
     reason: str | None = None
 
@@ -104,3 +128,7 @@ class ScoreOut(BaseModel):
     handle: str
     influence_score_display: float
     cached_at: datetime | None
+
+class FeaturedPage(BaseModel):
+    items: list[FeaturedListingOut]
+    next_cursor: str | None
