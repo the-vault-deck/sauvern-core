@@ -8,15 +8,16 @@ always redirects to /login.
 
 Solution: sauvern-core proxies the request server-side.
   1. Authenticate the user via the sb_token HttpOnly cookie (require_sb_token).
-  2. Call soulbolt.ai/api/start?product_id={product_id} with Bearer {sb_token}.
-  3. Follow the redirect chain — soulbolt returns 302 → /tools.
+  2. GET soulbolt.ai/api/start?product_id={product_id} with Bearer {sb_token}.
+     follow_redirects=False — we read the 302 Location header directly.
+  3. soulbolt returns 302 → /tools (success) or 302 → /login (not authed).
   4. Return {redirect_url: "https://soulbolt.ai/tools"} to the frontend.
   5. Frontend does window.location.href = redirect_url.
 
 Never:
-  - redirects directly from this endpoint (CORS would block it)
+  - follows redirects (would land on soulbolt login HTML)
   - exposes the sb_token in a response body
-  - bypasses require_sb_token (auth still required on sauvern side)
+  - bypasses require_sb_token
 """
 import os
 import httpx
@@ -26,8 +27,11 @@ from auth import require_sb_token
 
 router = APIRouter(prefix="/trial", tags=["trial"])
 
-SOULBOLT_API_URL = os.environ.get("SOULBOLT_API_URL", "")
+# Use soulbolt.ai (public domain) — not the Railway internal URL.
+# Railway internal URL redirects to its own login on 302, not soulbolt.ai/login.
+SOULBOLT_PUBLIC_URL = "https://soulbolt.ai/api"
 ALLOWED_PRODUCTS = {"cantlie", "tgr", "ironoak", "secondarc", "sauvern"}
+SOULBOLT_BASE = "https://soulbolt.ai"
 
 
 @router.post("/start")
@@ -37,14 +41,12 @@ def start_trial(
     sb_token: Optional[str] = Cookie(default=None),
 ):
     """
-    Proxy GET /api/start on soulbolt-v1 with the user's sb_token as Bearer.
+    Proxy GET /api/start on soulbolt with the user's sb_token as Bearer.
+    Does NOT follow redirects — reads 302 Location header directly.
     Returns {redirect_url} for the frontend to navigate to.
 
-    Failure shapes:
-      400 — unknown product_id
-      401 — not authenticated (require_sb_token fires before this)
-      502 — soulbolt unreachable
-      500 — unexpected response from soulbolt
+    Success:  soulbolt returns 302 → /tools  → redirect_url = https://soulbolt.ai/tools
+    Unauthed: soulbolt returns 302 → /login  → 401 back to frontend
     """
     if not product_id or product_id not in ALLOWED_PRODUCTS:
         raise HTTPException(status_code=400, detail=f"Unknown product: {product_id}")
@@ -52,28 +54,35 @@ def start_trial(
     if not sb_token:
         raise HTTPException(status_code=401, detail="Missing auth cookie")
 
-    soulbolt_start_url = f"{SOULBOLT_API_URL}/start?product_id={product_id}"
+    soulbolt_start_url = f"{SOULBOLT_PUBLIC_URL}/start?product_id={product_id}"
 
     try:
-        # follow_redirects=True — soulbolt /api/start returns 302 → /tools
         resp = httpx.get(
             soulbolt_start_url,
             headers={"Authorization": f"Bearer {sb_token}"},
-            follow_redirects=True,
+            follow_redirects=False,  # read Location header, don't follow
             timeout=10.0,
         )
-    except httpx.RequestError as exc:
+    except httpx.RequestError:
         raise HTTPException(status_code=502, detail="SOULBOLT unreachable")
 
-    # After following redirects, final URL should be soulbolt.ai/tools (or /tools)
-    # We return that URL to the frontend for navigation.
-    final_url = str(resp.url)
+    # Expect a 302 redirect
+    if resp.status_code not in (301, 302, 303, 307, 308):
+        raise HTTPException(
+            status_code=502,
+            detail=f"Unexpected response from SOULBOLT: {resp.status_code}"
+        )
 
-    # Normalise: if soulbolt returned a relative /tools path, make it absolute
-    if final_url.startswith("/"):
-        base = SOULBOLT_API_URL.rstrip("/api")
-        final_url = base + final_url
+    location = resp.headers.get("location", "")
 
-    # Acceptable final destinations: /tools or /login (expired trial)
-    # Either way, send it back — frontend handles the landing.
-    return {"redirect_url": final_url}
+    # If soulbolt redirected to /login — token was rejected
+    if "/login" in location:
+        raise HTTPException(status_code=401, detail="SOULBOLT session expired. Please sign in again.")
+
+    # Normalise to absolute URL
+    if location.startswith("/"):
+        redirect_url = SOULBOLT_BASE + location
+    else:
+        redirect_url = location
+
+    return {"redirect_url": redirect_url}
