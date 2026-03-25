@@ -33,10 +33,10 @@ def _listing_type(listing: Listing) -> str:
 
 def _to_featured_out(listing: Listing) -> FeaturedListingOut:
     creator = listing.creator
-    # Derive external_link: contact_value for contact/trial, or contact_value for purchase
     external_link = listing.contact_value or None
     return FeaturedListingOut(
         id=listing.id,
+        slug=listing.slug,
         title=listing.title,
         description=listing.description,
         price_cents=listing.price_cents,
@@ -88,7 +88,6 @@ def get_featured_listings(
         raw = f"{last.created_at.isoformat()}|{last.id}"
         next_cursor = base64.b64encode(raw.encode()).decode()
 
-    # Exclude contact listings with null external_link and non-contact listings with null price
     valid = []
     for l in items:
         lt = _listing_type(l)
@@ -178,7 +177,6 @@ def create_listing(
     if not creator:
         raise HTTPException(status_code=404, detail="Creator profile not found — create profile first")
 
-    # is_featured only settable by admin
     is_featured = False
     if payload.is_featured and account_id == ADMIN_ACCOUNT_ID:
         is_featured = True

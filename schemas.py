@@ -118,6 +118,7 @@ class ListingOut(BaseModel):
 
 class FeaturedListingOut(BaseModel):
     id: str
+    slug: str
     title: str
     description: str | None
     price_cents: int | None

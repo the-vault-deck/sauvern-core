@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function ListingCard({ listing, creator }) {
   const handle = creator?.handle ?? listing.creator_id;
   const listingType = listing.listing_type
@@ -14,14 +16,18 @@ export default function ListingCard({ listing, creator }) {
     listingType === "purchase" ? "Buy Now" :
     "Contact";
 
-  function handleCta(e) {
+  // Trial and purchase listings link to the detail page for the full CTA flow.
+  // Contact listings open their external link directly.
+  const detailPath = (listingType === "trial" || listingType === "purchase")
+    ? `/${handle}/${listing.slug}`
+    : null;
+
+  function handleContactCta(e) {
     e.preventDefault();
     if (listing.external_link || listing.contact_value) {
       window.open(listing.external_link ?? listing.contact_value, "_blank", "noopener,noreferrer");
     }
   }
-
-  const hasCta = !!(listing.external_link || listing.contact_value);
 
   return (
     <div className="listing-card">
@@ -44,11 +50,15 @@ export default function ListingCard({ listing, creator }) {
       </div>
       <div className="listing-card-footer">
         {priceLabel && <span className="listing-card-price">{priceLabel}</span>}
-        {hasCta && (
-          <button className="btn btn-primary listing-card-cta" onClick={handleCta}>
+        {detailPath ? (
+          <Link to={detailPath} className="btn btn-primary listing-card-cta">
+            {ctaLabel}
+          </Link>
+        ) : (listing.external_link || listing.contact_value) ? (
+          <button className="btn btn-primary listing-card-cta" onClick={handleContactCta}>
             {ctaLabel}
           </button>
-        )}
+        ) : null}
       </div>
     </div>
   );
