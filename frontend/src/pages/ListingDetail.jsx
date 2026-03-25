@@ -9,7 +9,6 @@ export default function ListingDetail() {
   const [listing, setListing] = useState(null);
   const [creator, setCreator] = useState(null);
   const [error, setError] = useState(null);
-  const [trialState, setTrialState] = useState(null); // null | "loading" | "success" | "already_active" | "error"
 
   useEffect(() => {
     fetch(`/api/creators/${handle}`)
@@ -29,36 +28,11 @@ export default function ListingDetail() {
     navigate("/checkout", { state: { listing_id: listing.id } });
   }
 
-  async function handleBeginTrial() {
-    const token = sessionStorage.getItem("sauvern_token");
-    if (!token) { navigate("/login"); return; }
-
-    setTrialState("loading");
-    try {
-      const res = await fetch(`${SOULBOLT_API}/api/account/trial/start`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ product: listing.product_id }),
-      });
-      if (res.status === 409) {
-        setTrialState("already_active");
-        return;
-      }
-      if (res.status === 401) {
-        navigate("/login");
-        return;
-      }
-      if (!res.ok) {
-        setTrialState("error");
-        return;
-      }
-      setTrialState("success");
-    } catch {
-      setTrialState("error");
-    }
+  // Trial acquisition: redirect to SOULBOLT acquisition gate.
+  // soulbolt.ai/api/start handles auth, trial creation, and redirects to /tools.
+  // SAUVERN never initiates trials directly — discovery layer only.
+  function handleBeginTrial() {
+    window.location.href = `${SOULBOLT_API}/api/start?product_id=${encodeURIComponent(listing.product_id)}`;
   }
 
   if (error) return (
@@ -72,8 +46,7 @@ export default function ListingDetail() {
     ? `$${(listing.price_cents / 100).toFixed(2)}`
     : "Free";
 
-  // Determine CTA type
-  const isTrial = !!listing.product_id;
+  const isTrial    = !!listing.product_id;
   const isPurchase = !isTrial && !!listing.price_cents;
 
   return (
@@ -93,30 +66,9 @@ export default function ListingDetail() {
         <div className="listing-detail-body">{listing.description}</div>
         <div className="listing-detail-cta">
           {isTrial ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <button
-                className="btn btn-primary"
-                onClick={handleBeginTrial}
-                disabled={trialState === "loading" || trialState === "success" || trialState === "already_active"}
-              >
-                {trialState === "loading" ? "Starting..." : "Begin 14-Day Trial"}
-              </button>
-              {trialState === "success" && (
-                <p style={{ fontSize: "0.8rem", color: "var(--color-accent)", margin: 0 }}>
-                  Trial started. Return to SOULBOLT — {listing.title} is now in your tools panel.
-                </p>
-              )}
-              {trialState === "already_active" && (
-                <p style={{ fontSize: "0.8rem", color: "var(--color-muted)", margin: 0 }}>
-                  You already have an active trial for this tool.
-                </p>
-              )}
-              {trialState === "error" && (
-                <p style={{ fontSize: "0.8rem", color: "var(--color-danger)", margin: 0 }}>
-                  Something went wrong. Try again.
-                </p>
-              )}
-            </div>
+            <button className="btn btn-primary" onClick={handleBeginTrial}>
+              Begin 14-Day Trial
+            </button>
           ) : isPurchase ? (
             <>
               <span className="listing-price-display">{price}</span>
