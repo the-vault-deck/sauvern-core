@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import httpx
-from routers import creators, listings, index, checkout, submissions, admin
+from routers import creators, listings, index, checkout, submissions, admin, trial
 
 SOULBOLT_API_URL = os.environ.get("SOULBOLT_API_URL", "")
 COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
@@ -26,6 +26,7 @@ app.include_router(listings.router, prefix="/api")
 app.include_router(checkout.router, prefix="/api/checkout", tags=["checkout"])
 app.include_router(submissions.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(trial.router, prefix="/api")
 
 
 # ---------------------------------------------------------------------------
