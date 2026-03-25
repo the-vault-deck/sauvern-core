@@ -32,7 +32,7 @@ def require_admin(account_id: str = Depends(require_sb_token)) -> str:
 
 
 class SetProductRequest(BaseModel):
-    product_id: str | None  # None clears the product_id (demotes to contact listing)
+    product_id: str | None  # None clears product_id (demotes to contact/purchase)
 
 
 @router.get("/me")
@@ -132,22 +132,27 @@ def set_listing_product_id(
     """
     Set or clear the product_id on a listing.
 
-    product_id gates the acquisition flow: a listing with product_id renders
-    a "Begin 14-Day Trial" CTA that redirects to soulbolt.ai/api/start.
-    A listing without product_id renders contact or purchase CTA instead.
+    Listing type invariant (enforced on both create and mutate paths):
+      trial    — product_id set, price_cents null
+      purchase — price_cents set, product_id null
+      contact  — neither set, contact_value required
 
-    Validation:
-      - product_id must be in ALLOWED_PRODUCT_IDS or None
-      - A listing cannot have both product_id and price_cents set
-        (mutually exclusive per AdminListingCreate schema contract)
+    Setting product_id:
+      - Must be in ALLOWED_PRODUCT_IDS
+      - Rejected if price_cents is already set (mutually exclusive)
 
-    Returns the updated listing.
+    Clearing product_id (None):
+      - Rejected if listing has no price_cents AND no contact_value
+        (would produce a typeless listing with no valid CTA)
+      - Allowed if listing has price_cents (becomes purchase) or contact_value (becomes contact)
     """
+    # 404 — listing must exist
     listing = db.query(Listing).filter(Listing.id == listing_id).first()
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
 
     if body.product_id is not None:
+        # Setting — validate product and check price conflict
         if body.product_id not in ALLOWED_PRODUCT_IDS:
             raise HTTPException(
                 status_code=422,
@@ -157,6 +162,18 @@ def set_listing_product_id(
             raise HTTPException(
                 status_code=422,
                 detail="Cannot set product_id on a listing that has price_cents. Clear price_cents first."
+            )
+    else:
+        # Clearing — enforce listing type invariant.
+        # After clearing, listing must resolve to purchase or contact.
+        # If no price_cents and no contact_value: result is typeless — reject.
+        if listing.price_cents is None and not listing.contact_value:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Cannot clear product_id: listing has no price_cents and no contact_value. "
+                    "Set price_cents or contact_value first to ensure a valid listing type."
+                )
             )
 
     listing.product_id = body.product_id
