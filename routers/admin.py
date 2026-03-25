@@ -1,12 +1,13 @@
 """
 routers/admin.py
 SAUVERN admin endpoints — submission review, feature toggle,
-creator profile creation, and listing creation on behalf of any creator.
-Gated by SAUVERN_ADMIN_ACCOUNT_ID env var.
+creator profile creation, listing creation, and product_id assignment.
+All endpoints gated by SAUVERN_ADMIN_ACCOUNT_ID env var.
 """
 import os
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Listing, ListingIndex, CreatorProfile
@@ -18,6 +19,9 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 ADMIN_ACCOUNT_ID = os.environ.get("SAUVERN_ADMIN_ACCOUNT_ID", "")
 
+# Allowed product_id values — must match ALLOWED_PRODUCTS in soulbolt-v1 api/start.py
+ALLOWED_PRODUCT_IDS = {"cantlie", "tgr", "ironoak", "secondarc", "sauvern"}
+
 
 def require_admin(account_id: str = Depends(require_sb_token)) -> str:
     if not ADMIN_ACCOUNT_ID:
@@ -25,6 +29,10 @@ def require_admin(account_id: str = Depends(require_sb_token)) -> str:
     if account_id != ADMIN_ACCOUNT_ID:
         raise HTTPException(status_code=403, detail="Forbidden")
     return account_id
+
+
+class SetProductRequest(BaseModel):
+    product_id: str | None  # None clears the product_id (demotes to contact listing)
 
 
 @router.get("/me")
@@ -76,7 +84,7 @@ def admin_create_listing(
     admin_id: str = Depends(require_admin),
 ):
     """Create a listing on behalf of any creator by creator_id.
-    Listing + ListingIndex written in a single transaction. Rolls back on failure.
+    Listing + ListingIndex written in a single transaction.
     """
     creator = db.query(CreatorProfile).filter(CreatorProfile.id == payload.creator_id).first()
     if not creator:
@@ -110,6 +118,49 @@ def admin_create_listing(
     except Exception:
         db.rollback()
         raise HTTPException(status_code=500, detail="Listing creation failed")
+    db.refresh(listing)
+    return listing
+
+
+@router.patch("/listings/{listing_id}/product", response_model=ListingOut)
+def set_listing_product_id(
+    listing_id: str,
+    body: SetProductRequest,
+    db: Session = Depends(get_db),
+    admin_id: str = Depends(require_admin),
+):
+    """
+    Set or clear the product_id on a listing.
+
+    product_id gates the acquisition flow: a listing with product_id renders
+    a "Begin 14-Day Trial" CTA that redirects to soulbolt.ai/api/start.
+    A listing without product_id renders contact or purchase CTA instead.
+
+    Validation:
+      - product_id must be in ALLOWED_PRODUCT_IDS or None
+      - A listing cannot have both product_id and price_cents set
+        (mutually exclusive per AdminListingCreate schema contract)
+
+    Returns the updated listing.
+    """
+    listing = db.query(Listing).filter(Listing.id == listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    if body.product_id is not None:
+        if body.product_id not in ALLOWED_PRODUCT_IDS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown product_id '{body.product_id}'. Must be one of: {sorted(ALLOWED_PRODUCT_IDS)}"
+            )
+        if listing.price_cents is not None:
+            raise HTTPException(
+                status_code=422,
+                detail="Cannot set product_id on a listing that has price_cents. Clear price_cents first."
+            )
+
+    listing.product_id = body.product_id
+    db.commit()
     db.refresh(listing)
     return listing
 

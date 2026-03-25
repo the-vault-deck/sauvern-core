@@ -29,10 +29,13 @@ export default function ListingDetail() {
   }
 
   // Trial acquisition: redirect to SOULBOLT acquisition gate.
-  // soulbolt.ai/api/start handles auth, trial creation, and redirects to /tools.
+  // soulbolt.ai/api/start handles auth, trial creation (synchronous,
+  // transaction-bound), entitlement guarantee, and redirects to /tools.
   // SAUVERN never initiates trials directly — discovery layer only.
+  // product_id is encodeURIComponent'd to handle any special characters.
   function handleBeginTrial() {
-    window.location.href = `${SOULBOLT_API}/api/start?product_id=${encodeURIComponent(listing.product_id)}`;
+    const encodedProductId = encodeURIComponent(listing.product_id);
+    window.location.href = `${SOULBOLT_API}/api/start?product_id=${encodedProductId}`;
   }
 
   if (error) return (
