@@ -30,7 +30,7 @@ router = APIRouter(prefix="/trial", tags=["trial"])
 # Use soulbolt.ai (public domain) — not the Railway internal URL.
 # Railway internal URL redirects to its own login on 302, not soulbolt.ai/login.
 SOULBOLT_PUBLIC_URL = "https://soulbolt.ai/api"
-ALLOWED_PRODUCTS = {"cantlie", "tgr", "ironoak", "secondarc", "sauvern"}
+ALLOWED_PRODUCTS = {"cantlie", "tgr", "ironoak", "secondarc", "sauvern", "strikecoin"}
 SOULBOLT_BASE = "https://soulbolt.ai"
 
 

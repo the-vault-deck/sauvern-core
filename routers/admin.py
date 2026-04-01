@@ -20,7 +20,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 ADMIN_ACCOUNT_ID = os.environ.get("SAUVERN_ADMIN_ACCOUNT_ID", "")
 
 # Allowed product_id values — must match ALLOWED_PRODUCTS in soulbolt-v1 api/start.py
-ALLOWED_PRODUCT_IDS = {"cantlie", "tgr", "ironoak", "secondarc", "sauvern"}
+ALLOWED_PRODUCT_IDS = {"cantlie", "tgr", "ironoak", "secondarc", "sauvern", "strikecoin"}
 
 
 def require_admin(account_id: str = Depends(require_sb_token)) -> str:

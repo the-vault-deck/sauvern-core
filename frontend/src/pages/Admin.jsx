@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 const MAIN_TABS = ["CREATE LISTING", "SUBMISSIONS", "MANAGE LISTINGS"];
 const STATUS_TABS = ["PENDING", "APPROVED", "REJECTED"];
-const ALLOWED_PRODUCT_IDS = ["cantlie", "tgr", "ironoak", "secondarc", "sauvern"];
+const ALLOWED_PRODUCT_IDS = ["cantlie", "tgr", "ironoak", "secondarc", "sauvern", "strikecoin"];
 
 const EMPTY_LISTING = {
   creator_id: "",
