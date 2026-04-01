@@ -12,7 +12,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "0007_strikecoin_listing"
-down_revision = "0006"
+down_revision = "0006_is_featured"
 branch_labels = None
 depends_on = None
 
