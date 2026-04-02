@@ -56,6 +56,8 @@ Does NOT own:
 | Acquire flow | Redirect-based via soulbolt.ai |
 | Checkout | Present but not the focus of this rollout |
 | Admin tools | Live |
+| Ground truth | Committed this session |
+| Current main SHA | 56efdee |
 
 ---
 
@@ -149,6 +151,7 @@ Launch note:
 - Added `0008_feature_strikecoin.py` to correct the already-applied live row
 - Confirmed production upgrade `0007_strikecoin_listing -> 0008_feature_strikecoin`
 - Confirmed Strikecoin appears in live featured feed
+- Ground truth committed this session
 
 ---
 
